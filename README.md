@@ -47,7 +47,7 @@ sudo apt-get install python3-qrcode
    shiny::runApp("app.R")
    ```
 
-3. Open your browser to `http://127.0.0.1:3838` (or the port shown in the console)
+3. Open your browser to the URL shown in the console (typically `http://127.0.0.1:XXXX` where XXXX is a random port)
 
 4. Enter a URL in the text box and click "Generate QR Code"
 

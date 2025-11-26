@@ -37,8 +37,11 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
-  # Create a temporary directory for QR codes
-  qr_dir <- tempdir()
+  # Create a unique subdirectory for this session's QR codes
+  qr_dir <- file.path(tempdir(), paste0("shinyqr_", Sys.getpid()))
+  if (!dir.exists(qr_dir)) {
+    dir.create(qr_dir, recursive = TRUE)
+  }
   
   # Reactive value to store the path of the generated QR code
   qr_path <- reactiveVal(NULL)
@@ -54,14 +57,33 @@ server <- function(input, output, session) {
       return()
     }
     
+    # Validate URL format (basic validation to prevent malicious input)
+    # Allow standard URL characters including protocol, path, query, and fragment
+    if (!grepl("^[a-zA-Z0-9:/.?&=_%-@#~+]+$", url)) {
+      showNotification("Invalid URL format", type = "error")
+      return()
+    }
+    
     # Create a unique filename
     qr_file <- file.path(qr_dir, paste0("qr_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".png"))
     
     # Generate QR code using the qr command
+    # shQuote provides shell escaping for the URL
     cmd <- paste0("qr ", shQuote(url), " > ", shQuote(qr_file))
-    result <- system(cmd)
+    result <- tryCatch({
+      system(cmd)
+    }, error = function(e) {
+      -1
+    })
     
-    if (result == 0 && file.exists(qr_file) && file.info(qr_file)$size > 0) {
+    # Check if file was created successfully
+    file_ok <- tryCatch({
+      file.exists(qr_file) && file.info(qr_file)$size > 0
+    }, error = function(e) {
+      FALSE
+    })
+    
+    if (result == 0 && file_ok) {
       qr_path(qr_file)
       showNotification("QR Code generated successfully!", type = "message")
     } else {
