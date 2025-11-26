@@ -1,0 +1,2 @@
+# ShinyQR
+Create a QR
