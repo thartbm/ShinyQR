@@ -1,8 +1,7 @@
-# ShinyQR - A Shiny app that generates QR codes from links
-# 
-# This application takes a URL input and generates a QR code image.
-
+# ShinyQR - QR Code Generator (qrcode package version)
 library(shiny)
+library(qrcode)
+library(png)
 
 # Define UI
 ui <- fluidPage(
@@ -57,8 +56,7 @@ server <- function(input, output, session) {
       return()
     }
     
-    # Validate URL format (basic validation to prevent malicious input)
-    # Allow standard URL characters including protocol, path, query, and fragment
+    # Basic URL format validation (allow typical URL characters)
     if (!grepl("^[a-zA-Z0-9:/.?&=_%-@#~+]+$", url)) {
       showNotification("Invalid URL format", type = "error")
       return()
@@ -67,23 +65,31 @@ server <- function(input, output, session) {
     # Create a unique filename
     qr_file <- file.path(qr_dir, paste0("qr_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".png"))
     
-    # Generate QR code using the qr command
-    # shQuote provides shell escaping for the URL
-    cmd <- paste0("qr ", shQuote(url), " > ", shQuote(qr_file))
-    result <- tryCatch({
-      system(cmd)
-    }, error = function(e) {
-      -1
-    })
-    
-    # Check if file was created successfully
-    file_ok <- tryCatch({
-      file.exists(qr_file) && file.info(qr_file)$size > 0
+    # Generate QR code using the qrcode R package and write a PNG (no external system call)
+    success <- tryCatch({
+      # Generate QR code matrix (TRUE/FALSE or 1/0). Function name and return shape are from the qrcode package.
+      mat <- qrcode::qr_code(url)
+      
+      # Ensure numeric matrix (1 = dark module, 0 = light)
+      if (is.logical(mat)) {
+        mat_num <- matrix(as.integer(mat), nrow = nrow(mat), ncol = ncol(mat))
+      } else {
+        mat_num <- matrix(as.integer(mat), nrow = nrow(mat), ncol = ncol(mat))
+      }
+      
+      # Upsample each QR module to make a nicer PNG (module_size pixels per QR module)
+      module_size <- 8L
+      img_big <- kronecker(1 - mat_num, matrix(1, module_size, module_size)) # 1 = white, 0 = black
+      
+      # writePNG expects values in [0,1]. Passing a matrix writes a greyscale PNG.
+      png::writePNG(img_big, target = qr_file)
+      
+      TRUE
     }, error = function(e) {
       FALSE
     })
     
-    if (result == 0 && file_ok) {
+    if (isTRUE(success) && file.exists(qr_file) && file.info(qr_file)$size > 0) {
       qr_path(qr_file)
       showNotification("QR Code generated successfully!", type = "message")
     } else {
