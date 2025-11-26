@@ -9,10 +9,12 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
+      p("Use a URL starting with https:// to link to a website."),
+      p("Use a URL like 'mailto:name@domain.ca' to create an email link."),
       textInput(
         inputId = "url_input",
         label = "Enter URL:",
-        value = "https://github.com",
+        value = "https://deniseh.lab.yorku.ca",
         placeholder = "Enter a URL here..."
       ),
       actionButton(
